@@ -7,67 +7,88 @@ export const departments = [
   { id: 'operations', name: 'Operations', icon: 'Settings' }
 ];
 
-export const generateMockData = (deptId) => {
-  if (deptId === 'overview') {
-    return {
-      title: 'Company Overview',
-      metrics: [
-        { label: 'Total Active Tasks', value: '1,248', trend: '+12%', isPositive: true },
-        { label: 'Completed This Week', value: '856', trend: '+5%', isPositive: true },
-        { label: 'Avg. Resolution Time', value: '2.4 days', trend: '-18%', isPositive: true },
-        { label: 'Delayed Projects', value: '14', trend: '+2', isPositive: false }
-      ],
-      workloadOverTime: [
-        { name: 'Mon', tasks: 120 },
-        { name: 'Tue', tasks: 132 },
-        { name: 'Wed', tasks: 101 },
-        { name: 'Thu', tasks: 142 },
-        { name: 'Fri', tasks: 90 },
-        { name: 'Sat', tasks: 30 },
-        { name: 'Sun', tasks: 20 },
-      ],
-      distribution: [
-        { name: 'IT', value: 400 },
-        { name: 'Sales', value: 300 },
-        { name: 'Marketing', value: 300 },
-        { name: 'Operations', value: 200 },
-        { name: 'HR', value: 100 },
-      ],
-      recentTasks: [
-        { id: 'TASK-101', dept: 'IT', title: 'Server Upgrade', priority: 'High', status: 'In Progress', assignee: 'John D.' },
-        { id: 'TASK-102', dept: 'Marketing', title: 'Q3 Campaign Launch', priority: 'Medium', status: 'To Do', assignee: 'Sarah W.' },
-        { id: 'TASK-103', dept: 'Sales', title: 'Client Pitch Deck', priority: 'High', status: 'Completed', assignee: 'Mike T.' },
-        { id: 'TASK-104', dept: 'HR', title: 'New Hire Onboarding', priority: 'Low', status: 'In Progress', assignee: 'Emily R.' },
-      ]
-    };
+const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+const priorities = ['High', 'Medium', 'Low'];
+const statuses = ['To Do', 'In Progress', 'Completed'];
+const assigneeNames = ['John D.', 'Sarah W.', 'Mike T.', 'Emily R.', 'Alex C.', 'David L.'];
+
+export const generateInitialTasks = () => {
+  const tasks = [];
+  const deptList = departments.filter(d => d.id !== 'overview').map(d => d.name);
+  
+  for (let i = 0; i < 80; i++) {
+    const dept = deptList[Math.floor(Math.random() * deptList.length)];
+    tasks.push({
+      id: `TSK-${1000 + i}`,
+      title: `Routine Task ${i + 1} for ${dept}`,
+      dept: dept,
+      assignee: assigneeNames[Math.floor(Math.random() * assigneeNames.length)],
+      priority: priorities[Math.floor(Math.random() * priorities.length)],
+      status: statuses[Math.floor(Math.random() * statuses.length)],
+      dayOfWeek: days[Math.floor(Math.random() * days.length)]
+    });
+  }
+  return tasks;
+};
+
+export const computeDashboardData = (tasks, activeDeptId) => {
+  const activeDept = departments.find(d => d.id === activeDeptId);
+  const isOverview = activeDeptId === 'overview';
+  
+  // Filter tasks for current department if not overview
+  const filteredTasks = isOverview ? tasks : tasks.filter(t => t.dept === activeDept.name);
+
+  // Compute Metrics
+  const activeTasksCount = filteredTasks.filter(t => t.status !== 'Completed').length;
+  const completedCount = filteredTasks.filter(t => t.status === 'Completed').length;
+  const overdueCount = filteredTasks.filter(t => t.priority === 'High' && t.status === 'To Do').length; // Mock overdue logic
+  
+  // Format numbers with commas
+  const metrics = [
+    { label: 'Active Tasks', value: activeTasksCount.toLocaleString(), trend: '+2%', isPositive: true },
+    { label: 'Completed', value: completedCount.toLocaleString(), trend: '+5%', isPositive: true },
+    { label: 'Avg. Time per Task', value: (Math.random() * 2 + 1).toFixed(1) + ' hrs', trend: '-5%', isPositive: true },
+    { label: 'High Priority (To Do)', value: overdueCount.toString(), trend: overdueCount > 5 ? '+2' : '-1', isPositive: overdueCount <= 5 }
+  ];
+
+  // Compute Workload Over Time (Area Chart)
+  const workloadByDay = {};
+  days.forEach(d => workloadByDay[d] = 0);
+  filteredTasks.forEach(t => {
+    if (t.dayOfWeek && workloadByDay[t.dayOfWeek] !== undefined) {
+      workloadByDay[t.dayOfWeek] += 1;
+    }
+  });
+  const workloadOverTime = days.map(day => ({ name: day, tasks: workloadByDay[day] }));
+
+  // Compute Distribution (Bar Chart) - Only for overview
+  let distribution = null;
+  if (isOverview) {
+    const distMap = {};
+    departments.filter(d => d.id !== 'overview').forEach(d => distMap[d.name] = 0);
+    filteredTasks.forEach(t => {
+      if (distMap[t.dept] !== undefined) {
+        distMap[t.dept] += 1;
+      }
+    });
+    distribution = Object.keys(distMap).map(key => ({
+      name: key.replace(' Department', ''), // shorten names
+      value: distMap[key]
+    })).sort((a, b) => b.value - a.value);
   }
 
-  // Department specific mock data
-  const deptName = departments.find(d => d.id === deptId)?.name || 'Department';
-  const baseTasks = Math.floor(Math.random() * 200) + 50;
-  
+  // Sort tasks: newest first (assuming higher ID is newer)
+  const sortedTasks = [...filteredTasks].sort((a, b) => {
+    const idA = parseInt(a.id.split('-')[1]);
+    const idB = parseInt(b.id.split('-')[1]);
+    return idB - idA;
+  });
+
   return {
-    title: `${deptName} Dashboard`,
-    metrics: [
-      { label: 'Active Tasks', value: baseTasks.toString(), trend: '+5%', isPositive: true },
-      { label: 'Completed', value: Math.floor(baseTasks * 0.8).toString(), trend: '+2%', isPositive: true },
-      { label: 'Avg. Time per Task', value: (Math.random() * 3 + 1).toFixed(1) + ' hrs', trend: '-5%', isPositive: true },
-      { label: 'Overdue', value: Math.floor(Math.random() * 10).toString(), trend: '+1', isPositive: false }
-    ],
-    workloadOverTime: Array.from({length: 7}).map((_, i) => ({
-      name: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][i],
-      tasks: Math.floor(Math.random() * 50) + 10
-    })),
-    recentTasks: Array.from({length: 5}).map((_, i) => {
-      const statuses = ['To Do', 'In Progress', 'Completed'];
-      return {
-        id: `TSK-${Math.floor(Math.random() * 1000)}`,
-        dept: deptName,
-        title: `Routine Task ${i+1} for ${deptName}`,
-        priority: Math.random() > 0.7 ? 'High' : (Math.random() > 0.4 ? 'Medium' : 'Low'),
-        status: statuses[Math.floor(Math.random() * statuses.length)],
-        assignee: 'Staff Member'
-      };
-    })
+    title: isOverview ? 'Company Overview' : `${activeDept.name} Dashboard`,
+    metrics,
+    workloadOverTime,
+    distribution,
+    recentTasks: sortedTasks.slice(0, 15) // Return top 15 for table
   };
 };
