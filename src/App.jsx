@@ -1,55 +1,132 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import Sidebar from './components/Sidebar';
 import DashboardCard from './components/DashboardCard';
 import { WorkloadAreaChart, WorkloadBarChart } from './components/WorkloadChart';
 import RecentTasks from './components/RecentTasks';
 import TaskForm from './components/TaskForm';
-import { generateInitialTasks, computeDashboardData } from './data/mockData';
+import Login from './components/Login';
+import { fetchTasks, createTask, updateTask, deleteTask } from './api';
+import { computeDashboardData } from './data/mockData';
 
 function App() {
+  const [user, setUser] = useState(null);
   const [activeDept, setActiveDept] = useState('overview');
   const [activeView, setActiveView] = useState('dashboard'); // 'dashboard' or 'form'
   const [editingTask, setEditingTask] = useState(null);
   
-  // Single source of truth for all tasks
-  const [tasks, setTasks] = useState(() => generateInitialTasks());
+  const [tasks, setTasks] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    // Check if token exists on load
+    const token = localStorage.getItem('token');
+    if (token) {
+      // Very basic restore (in a real app, verify token with backend)
+      setUser({ role: 'admin' }); // Mock restore
+      loadTasks();
+    } else {
+      setLoading(false);
+    }
+  }, []);
+
+  const loadTasks = async () => {
+    try {
+      const data = await fetchTasks();
+      setTasks(data);
+    } catch (err) {
+      console.error(err);
+      if (err.message.includes('401') || err.message.includes('403')) {
+        handleLogout();
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleLoginSuccess = (userData) => {
+    setUser(userData);
+    if (userData.department_id !== 'overview') {
+      setActiveDept(userData.department_id);
+    }
+    loadTasks();
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem('token');
+    setUser(null);
+    setTasks([]);
+  };
 
   // Compute dashboard data dynamically based on tasks and active department
   const data = useMemo(() => computeDashboardData(tasks, activeDept), [tasks, activeDept]);
 
-  const handleAddTask = (newTask) => {
-    // Assign a random day of week to the new task for the Area Chart visualization
-    const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-    const taskWithDay = {
-      ...newTask,
-      dayOfWeek: days[Math.floor(Math.random() * days.length)]
-    };
-    
-    setTasks(prev => [taskWithDay, ...prev]);
+  const handleAddTask = async (newTask) => {
+    try {
+      // Backend expects: { id, title, department_id, assignee, priority, status, dayOfWeek }
+      const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+      const payload = {
+        id: newTask.id,
+        title: newTask.title,
+        department_id: newTask.dept, // Assuming TaskForm returns dept id
+        assignee: newTask.assignee,
+        priority: newTask.priority,
+        status: newTask.status,
+        dayOfWeek: days[Math.floor(Math.random() * days.length)]
+      };
+      await createTask(payload);
+      loadTasks(); // Refresh
+    } catch (err) {
+      console.error(err);
+      alert('Failed to add task');
+    }
   };
 
-  const handleUpdateTask = (updatedTask) => {
-    setTasks(prev => prev.map(t => t.id === updatedTask.id ? updatedTask : t));
-    setEditingTask(null);
+  const handleUpdateTask = async (updatedTask) => {
+    try {
+      await updateTask(updatedTask.id, {
+        title: updatedTask.title,
+        assignee: updatedTask.assignee,
+        priority: updatedTask.priority,
+        status: updatedTask.status
+      });
+      setEditingTask(null);
+      loadTasks();
+    } catch (err) {
+      console.error(err);
+      alert('Failed to update task');
+    }
   };
 
   const handleEditTask = (task) => {
     setEditingTask(task);
-    // If we edit a task, we could switch to form view or keep it as modal.
-    // The current TaskForm uses a modal if `editingTask` is set, so we don't strictly need to switch views.
-    // But switching view might be cleaner if they are on dashboard.
-    // Let's just rely on the modal for edits, it's a good UX.
   };
 
   const handleCancelEdit = () => {
     setEditingTask(null);
   };
 
-  // When changing department, default to dashboard view
+  const handleDeleteTask = async (taskId) => {
+    if (window.confirm('Are you sure you want to delete this task?')) {
+      try {
+        await deleteTask(taskId);
+        loadTasks();
+      } catch (err) {
+        console.error(err);
+        alert('Failed to delete task');
+      }
+    }
+  };
+
   const handleDeptChange = (deptId) => {
     setActiveDept(deptId);
     setActiveView('dashboard');
   };
+
+  if (loading) return <div style={{ color: 'white', textAlign: 'center', marginTop: '20vh' }}>Loading...</div>;
+
+  if (!user) {
+    return <Login onLoginSuccess={handleLoginSuccess} />;
+  }
 
   return (
     <div className="app-container">
@@ -58,6 +135,7 @@ function App() {
         setActiveDept={handleDeptChange} 
         activeView={activeView}
         setActiveView={setActiveView}
+        onLogout={handleLogout}
       />
       
       <main className="main-content">
@@ -83,7 +161,7 @@ function App() {
             />
             <section>
               <h2 style={{ marginBottom: '16px', fontSize: '1.25rem', color: 'var(--text-main)' }}>Recently Added</h2>
-              <RecentTasks tasks={data.recentTasks} onEditTask={handleEditTask} />
+              <RecentTasks tasks={data.recentTasks} onEditTask={handleEditTask} onDeleteTask={handleDeleteTask} />
             </section>
           </div>
         ) : (
@@ -117,7 +195,7 @@ function App() {
             </section>
 
             <section>
-              <RecentTasks tasks={data.recentTasks} onEditTask={handleEditTask} />
+              <RecentTasks tasks={data.recentTasks} onEditTask={handleEditTask} onDeleteTask={handleDeleteTask} />
             </section>
           </div>
         )}

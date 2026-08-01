@@ -1,7 +1,7 @@
 import React from 'react';
-import { Pencil } from 'lucide-react';
+import { Pencil, Trash2 } from 'lucide-react';
 
-export default function RecentTasks({ tasks, onEditTask }) {
+export default function RecentTasks({ tasks, onEditTask, onDeleteTask }) {
   const getPriorityBadgeClass = (priority) => {
     if (!priority) return 'badge';
     switch (priority.toLowerCase()) {
@@ -57,15 +57,26 @@ export default function RecentTasks({ tasks, onEditTask }) {
                 </span>
               </td>
               <td style={{ textAlign: 'right' }}>
-                <button 
-                  type="button"
-                  className="btn" 
-                  style={{ padding: '6px', color: 'var(--text-muted)' }} 
-                  onClick={() => onEditTask && onEditTask(task)}
-                  title="Edit Task"
-                >
-                  <Pencil size={16} />
-                </button>
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
+                  <button 
+                    type="button"
+                    className="btn" 
+                    style={{ padding: '6px', color: 'var(--text-muted)' }} 
+                    onClick={() => onEditTask && onEditTask(task)}
+                    title="Edit Task"
+                  >
+                    <Pencil size={16} />
+                  </button>
+                  <button 
+                    type="button"
+                    className="btn" 
+                    style={{ padding: '6px', color: '#ef4444' }} 
+                    onClick={() => onDeleteTask && onDeleteTask(task.id)}
+                    title="Delete Task"
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                </div>
               </td>
             </tr>
           ))}

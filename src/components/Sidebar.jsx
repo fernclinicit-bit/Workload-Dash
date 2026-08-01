@@ -7,7 +7,8 @@ import {
   Megaphone, 
   Settings,
   ChevronRight,
-  ChevronDown
+  ChevronDown,
+  LogOut
 } from 'lucide-react';
 import { departments } from '../data/mockData';
 
@@ -20,13 +21,13 @@ const iconMap = {
   Settings
 };
 
-export default function Sidebar({ activeDept, setActiveDept, activeView, setActiveView }) {
+export default function Sidebar({ activeDept, setActiveDept, activeView, setActiveView, onLogout }) {
   return (
-    <aside className="sidebar">
+    <aside className="sidebar" style={{ display: 'flex', flexDirection: 'column' }}>
       <div className="sidebar-header">
         <h2>WorkloadHub</h2>
       </div>
-      <nav className="sidebar-nav">
+      <nav className="sidebar-nav" style={{ flex: 1 }}>
         {departments.map((dept) => {
           const Icon = iconMap[dept.icon];
           const isActive = activeDept === dept.id;
@@ -69,6 +70,18 @@ export default function Sidebar({ activeDept, setActiveDept, activeView, setActi
           );
         })}
       </nav>
+      {onLogout && (
+        <div style={{ padding: '16px' }}>
+          <button 
+            className="nav-item" 
+            onClick={onLogout}
+            style={{ color: '#ef4444', justifyContent: 'center' }}
+          >
+            <LogOut size={20} />
+            <span style={{ marginLeft: '8px' }}>Logout</span>
+          </button>
+        </div>
+      )}
     </aside>
   );
 }
