@@ -4,11 +4,20 @@ import jwt from 'jsonwebtoken';
 import bcrypt from 'bcrypt';
 import db from './db.js';
 import dotenv from 'dotenv';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
 dotenv.config();
 
 const app = express();
 app.use(cors());
 app.use(express.json());
+
+// Serve static frontend files
+app.use(express.static(path.join(__dirname, '../dist')));
 
 const JWT_SECRET = process.env.JWT_SECRET || 'fallback-secret-key-please-change';
 
