@@ -1,8 +1,13 @@
 import pkg from 'pg';
 const { Pool } = pkg;
 import dotenv from 'dotenv';
-dotenv.config({ path: '../.env' }); // Assuming ran from server dir, but let's be safe: it reads env when app starts
-// actually, let's just use dotenv.config() and rely on running from root or passing env
+import { fileURLToPath } from 'url';
+import { dirname, resolve } from 'path';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
+dotenv.config({ path: resolve(__dirname, '../.env') });
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,

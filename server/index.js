@@ -38,25 +38,42 @@ app.get('/api/departments', async (req, res) => {
 
 // POST /api/login
 app.post('/api/login', async (req, res) => {
-  const { username, password } = req.body;
   try {
+    const { username, password } = req.body;
     const result = await db.query('SELECT * FROM wd_users WHERE username = $1', [username]);
-    const user = result.rows[0];
     
-    if (user && await bcrypt.compare(password, user.password)) {
-      const token = jwt.sign({ 
-        id: user.id, 
-        username: user.username, 
-        department_id: user.department_id,
-        role: user.role
-      }, JWT_SECRET, { expiresIn: '8h' });
-      
-      res.json({ token, user: { username: user.username, department_id: user.department_id, role: user.role } });
-    } else {
-      res.status(401).json({ error: 'Invalid credentials' });
+    if (result.rows.length === 0) {
+      return res.status(401).json({ error: 'Invalid credentials' });
     }
+
+    const user = result.rows[0];
+    const validPassword = await bcrypt.compare(password, user.password);
+
+    if (!validPassword) {
+      return res.status(401).json({ error: 'Invalid credentials' });
+    }
+
+    const token = jwt.sign(
+      { id: user.id, username: user.username, department_id: user.department_id, role: user.role },
+      process.env.JWT_SECRET || 'fallback-secret',
+      { expiresIn: '24h' }
+    );
+
+    res.json({ token, user: { id: user.id, username: user.username, department_id: user.department_id, role: user.role } });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error(err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// Temporary endpoint to fix admin password
+app.get('/api/fix-admin', async (req, res) => {
+  try {
+    await db.query(`UPDATE wd_users SET password = $1 WHERE username = 'admin'`, ['$2b$10$RctC5doUGaoUHNTWR3LM4uhhoKg9pM0MYKKyaUP7wF8MFVDCsTPiy']);
+    res.send('Admin password fixed! You can now login with admin123');
+  } catch (err) {
+    console.error(err);
+    res.status(500).send('Error fixing password: ' + err.message);
   }
 });
 

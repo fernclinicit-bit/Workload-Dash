@@ -37,5 +37,5 @@ ON CONFLICT (id) DO NOTHING;
 -- Insert a default admin user (Password is 'admin123' hashed with bcrypt)
 -- Note: Replace this with your own secure password in production!
 INSERT INTO wd_users (username, password, department_id, role) VALUES 
-('admin', '$2b$10$w/XlF8.n/9YlF.hXq6kO.O60fM9rM2B8X/C6V0y/R3V3/8525s0T6', 'overview', 'admin')
+('admin', '$2b$10$RctC5doUGaoUHNTWR3LM4uhhoKg9pM0MYKKyaUP7wF8MFVDCsTPiy', 'overview', 'admin')
 ON CONFLICT (username) DO NOTHING;
